@@ -1,0 +1,35 @@
+#!/sbin/runscript
+# Jared Nance, 2010 for University of Washington
+# Gentoo init script to create device nodes & load
+# modules for Acromag Inc. I/O Server
+
+depend() {
+	need localmount
+}
+
+createiosdevice() {
+	min=0
+	maj=$(cat /proc/devices | grep ioscarrier | awk '{print $1}')
+	if ! [[ -e /dev/ioscarrier_0 ]] ; then
+		mknod -m 666 /dev/ioscarrier_0 c $maj $min 
+	fi
+}
+
+start() {
+	if [[ -e /dev/ioscarrier_0 ]] ; then
+		rm /dev/ioscarrier_0 &> /dev/null
+	fi
+	
+	einfo "Loading IOS Carrier kernel modules & creating devices..."
+	insmod /home/slowcontroller/ios/devios/ioscarrier.ko &> /dev/null
+	createiosdevice
+
+	eend $? "IOS Carrier startup failed."
+}
+
+stop() {
+	einfo "Unloading modules and removing devices related to IOS Carrier..."
+	rmmod ioscarrier &> /dev/null
+	rm /dev/ioscarrier_0 &> /dev/null
+	eend $?
+}
