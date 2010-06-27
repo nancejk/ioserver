@@ -45,27 +45,20 @@ int main()
   if ( (buf = (byte*) malloc(size)) == NULL ) return -1;
 
   // DEBUG
-  fprintf(stderr, "at beginning of loop.\n");
   while ( read_cmd(&buf, &size) > 0 ) {
-    fprintf(stderr, "entered loop.\n");
     /* Reset the index, so that ei functions can decode terms
      * from the beginning of the buffer */
     index = 0;
 
     /* Strip the version byte to ensure this is the binary term */
-    fprintf(stderr, "version check...\n");
     if ( ei_decode_version(buf, &index, &version) ) return 1;
-    fprintf(stderr, "version decoded.\n");
 
     /* Expecting the tuple {Command, Arg1, Arg2} */
     if ( ei_decode_tuple_header(buf, &index, &arity) ) return 2;
-    fprintf(stderr, "tuple decoded.\n");
 
     if ( arity != 3 ) return 3;
-    fprintf(stderr, "arity passed.\n");
 
     if ( ei_decode_atom(buf, &index, command) ) return 4;
-    fprintf(stderr, "decode atom passed.\n");
 
     /* Prepare the output buffer to hold {ok, Result} or {error, Reason}
      */
@@ -75,7 +68,6 @@ int main()
       if ( ei_decode_long(buf, &index, &b) ) return 7;
 
       if ( !strcmp("add",command) ) {
-	fprintf(stderr,"adding...\n");
 	c = add(a, b);
       }
       else
@@ -111,20 +103,16 @@ int main()
 /* Data Marshalling */
 int read_cmd(byte** buf, int* size)
 {
-  fprintf(stderr, "entered read_cmd; size is %d\n", *size);
   int len, firstchar, secondchar;
   if( (read_exact(*buf, 2) != 2) ) return -1;
   len = (*buf[0] << 8) | *buf[1];
-  fprintf(stderr, "read_cmd decoded len as %d\n", len);
   if( len > *size ) {
-    fprintf(stderr, "len too big...\n");
     byte* tmp = (byte*) realloc(*buf, len);
     if( tmp == NULL ) return -1;
     else *buf = tmp;
     *size = len;
   }
-  fprintf(stderr,"leaving to read_exact.\n");
-  return read_exact(*buf, 13);
+  return read_exact(*buf, len);
 }
 
 int write_cmd(ei_x_buff* buff)
@@ -143,17 +131,13 @@ int read_exact(byte* buf, int len)
 {
   int i, got = 0;
 
-  fprintf(stderr, "entered read_exact; len is %d\n", len);
   do {
     if ( ( i = read(0, buf+got, len-got) ) <= 0 ) {
-      fprintf(stderr, "leaving if do/while loop early.  read < 0\n");
       return i;
     }
     got += i;
-    fprintf(stderr, "read %d bytes so far...\n", got);
   } while (got < len);
 
-  fprintf(stderr, "exiting read_exact.\n");
   return len;
 }
 
