@@ -29,8 +29,8 @@ int main()
   int data_size = 0;
   while( ( data_size = read_cmd(buff) ) > 0 ) {
     fprintf(stderr,"C: received data of size %i\n",data_size);
-    int* test = (int*)buff;
-    fprintf(stderr,"C: %d, %d\n", *test, *(test+1));
+    the_test = (test_struct*)buff;
+    fprintf(stderr,"C: %d, %d\n", the_test->a, the_test->b);
 
     buff[0] = 1;
     write_cmd(buff,1);
