@@ -1,14 +1,9 @@
-ERL_LIB=/usr/lib/erlang/lib/erl_interface-3.6.5
-CFLAGS=-Wall -pedantic -I/usr/local/include -I$(ERL_LIB)/include
-LDFLAGS=-L. -L$(ERL_LIB)/lib
+CFLAGS=-Wall -pedantic
 
-all: cport tport port.beam port_payload_test.beam
+all: port.beam cport
 
 cport: cport.o
-	gcc $(LDFLAGS) $< -lerl_interface -lei -lpthread -o $@
-
-tport: tport.o
-	gcc $(LDFLAGS) $< -lerl_interface -lei -lpthread -o $@
+	gcc $(LDFLAGS) $< -lpthread -o $@
 
 %.o: %.c
 	gcc -g $(CFLAGS) -o $@ -c $<
