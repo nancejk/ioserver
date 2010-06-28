@@ -29,18 +29,18 @@ call_port(Msg) ->
 init(ExtPrg) ->
   register(?MODULE, self()),
   process_flag(trap_exit, true),
-  Port = open_port({spawn, ExtPrg}, [{packet, 2}, binary, exit_status]),
+  Port = open_port({spawn, ExtPrg}, [{packet, 2}]), 
   loop(Port).
 
 loop(Port) ->
   receive
     {call, Caller, Msg} ->
       io:format("Calling port with ~p~n", [Msg]),
-      erlang:port_command(Port, term_to_binary(Msg)),
+      erlang:port_command(Port, encode(Msg)),
       io:format("Waiting for response...~n"),
       receive
 	{Port, {data,Data}} ->
-	  Caller ! binary_to_term(Data);
+	  Caller ! decode(Data);
 	{Port, {exit_status, Status}} when Status > 128 ->
 	  io:format("Port terminated with signal: ~p~n", [Status-128]),
 	  exit({port_terminated, Status});
@@ -55,3 +55,13 @@ loop(Port) ->
       erlang:port_close(Port),
       exit(normal)
   end.
+
+encode({add, X, Y}) ->
+  [1,X,Y];
+encode({multiply, X, Y}) ->
+  [2,X,Y];
+encode({divide, X, Y}) ->
+  [3,X,Y].
+
+decode([Int]) ->
+  Int.

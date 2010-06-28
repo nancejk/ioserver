@@ -32,47 +32,36 @@ double divide(double a, double b)
 /* MAIN */
 int main()
 {
+  int fn, arg1, arg2, result;
+  byte buff[ BUF_SIZE ];
 
-  return 0;
-}
+  while( read_cmd(buff) > 0 ) {
+    fn = buff[0];
 
-/* Data Marshalling */
-int read_cmd(byte* buf)
-{
-  int len;
-  if( (read_exact(buf, 2) != 2) ) return -1;
-  len = (buf[0] << 8) | buf[1];
-  return read_exact(buf, len);
-}
-
-int write_cmd(byte* buff, int size)
-{
-  return 0;
-}
-
-int read_exact(byte* buf, int size)
-{
-  int i, got = 0;
-
-  do {
-    if ( ( i = read(0, buf+got, size-got) ) <= 0 ) {
-      return i;
+    if( fn == 1 ) {
+      arg1 = buff[1];
+      arg2 = buff[2];
+      result = add(arg1, arg2);
     }
-    got += i;
-  } while (got < size);
 
-  return got;
-}
+    else if ( fn == 2 ) {
+      arg1 = buff[1];
+      arg2 = buff[2];
 
-int write_exact(byte* buf, int size)
-{
-  int i, wrote = 0;
+      result = multiply( arg1, arg2 );
+    }
 
-  do {
-    if ( ( i = write(1, buf+wrote, size-wrote) ) <= 0 ) return i;
-    wrote += i;
-  } while (wrote < size);
+    else if ( fn == 3 ) {
+      arg1 = buff[1];
+      arg2 = buff[2];
+      
+      result = divide( arg1, arg2 );
+    }
 
-  return wrote;
+    buff[0] = result;
+    write_cmd(buff, 1);
+  }
+
+  return 0;
 }
 
