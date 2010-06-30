@@ -24,19 +24,16 @@ int main()
 {
   byte buff[BUF_SIZE];
 
-  test_struct* the_test = (test_struct*)malloc(sizeof(test_struct));
+  test_struct* the_test;
 
   int data_size = 0;
   while( ( data_size = read_cmd(buff) ) > 0 ) {
-    fprintf(stderr,"C: received data of size %i\n",data_size);
     the_test = (test_struct*)buff;
-    fprintf(stderr,"C: %d, %d\n", the_test->a, the_test->b);
-
-    buff[0] = 1;
-    write_cmd(buff,1);
+    buff[0] = the_test->a;
+    buff[1] = the_test->b;
+    write_cmd(buff,2);
   } 
   
-  free(the_test);
   return 0;
 }
 

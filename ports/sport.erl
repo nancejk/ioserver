@@ -28,7 +28,7 @@ loop(Port) ->
 	    Port ! {self(), {command,Payload}},
 	    receive
 		{Port, {data,Data}} ->
-		    Caller ! {?MODULE, decode(Data)}
+		    Caller ! {?MODULE, Data}
 	    end,
 	    loop(Port);
 	stop ->
@@ -40,6 +40,3 @@ loop(Port) ->
 	{'EXIT', Port, Reason} ->
 	    exit({port_terminated, Reason})
     end.
-	
-decode([Int]) ->
-    Int.
