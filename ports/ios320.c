@@ -11,12 +11,26 @@
 #include <stdio.h>
 #include <unistd.h>
 
+/* The maximum buffer size in bytes. */
+#define BUF_SIZE 512
+
+/* Enumeration over possible functions that can be called. */
+enum operation { READBYTEPADS };
+
 /* Macros for calculating struct offsets and field sizes.  offsetof(type,field)
  * could be included from stddef.h, but is instead replicated
  * here for documentation purposes.
  */
 #define offsetof(type, field) ((size_t)(&((type *)0)->field))
 #define fieldsize(type, field) ((size_t)sizeof(((type*)0)->field))
+
+/* Forward declarations of the erl_comm functions defined
+ * in erl_comm.c. 
+ */
+int read_cmd(byte* buffer);
+int read_exact(byte* buffer, int len);
+int write_cmd(byte* buffer, int len);
+int write_exact(byte* buffer, int len);
 
 /* This avoids a lot of 'structs' in the code. */
 typedef struct cblk320 cblk320;
@@ -170,13 +184,16 @@ int cblk320_byte_pads(byte* buf, int len)
 
 int main()
 {
-  byte buf[21];
-  int numbytes = cblk320_byte_pads(buf, 21);
+  byte buffer[BUF_SIZE];
 
-  printf("sizeof cblk320: %d; pad calculation %d\n", sizeof(cblk320), numbytes);
+  int data_size = 0;
+  while( ( data_size = read_cmd(buffer) ) > 0 ) {
+    if( buffer[0] == READBYTEPADS ) {
+      if( cblk320_byte_pads(buffer, 21) != sizeof(cblk320) ) return (-1);
+      write_cmd(buffer, 21);
+    }
+    else break;
+  }
 
-  int i;
-  for(i = 0; i < 21; i ++) printf("%d ",buf[i]);
-  printf("\n");
   return 0;
 }
