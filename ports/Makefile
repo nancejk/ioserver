@@ -1,15 +1,9 @@
 CSRC=cport sport ios320
 CSRC_TGTS=$(add-suffix .o,$(CSRC))
-ACROMAG_INC=/home/nancejk/ios
+ACROMAG_INC=/home/slowcontroller/ios
 CFLAGS=-Wall -pedantic -std=c99 -I$(ACROMAG_INC)
 
-all: port.beam cport sport ios320
-
-cport: cport.o erl_comm.o
-	gcc $(LDFLAGS) erl_comm.o $< -lpthread -o $@
-
-sport: sport.o erl_comm.o
-	gcc $(LDFLAGS) erl_comm.o $< -lpthread -o $@
+all: ios320.beam ios320 iosutils.beam
 
 ios320: ios320.o erl_comm.o
 	gcc $(LDFLAGS) erl_comm.o $< -o $@
