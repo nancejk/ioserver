@@ -3,6 +3,7 @@
 
 -module(ios320).
 -export([start/0,start/2,stop/0,bytepads/0]).
+-export([benchmark_bytepad_stability/0]).
 
 -define(CALL_BYTEPADS, 0).
 
@@ -49,5 +50,4 @@ loop(Port) ->
 	    end;
 	{'EXIT', Port, Reason} ->
 	    exit({port_terminated, Reason})
-    end.
-    
+    end.    
