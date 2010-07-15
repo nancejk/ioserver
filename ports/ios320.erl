@@ -2,7 +2,7 @@
 % 12 bit ADC.
 
 -module(ios320).
--export([start/0,start/2,stop/0,bytepads/0]).
+-export([start/0,start/2,stop/0,bytepads/0])
 
 -define(CALL_BYTEPADS, 0).
 
