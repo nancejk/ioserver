@@ -15,7 +15,7 @@
 #define BUF_SIZE 512
 
 /* Enumeration over possible functions that can be called. */
-enum operation { READBYTEPADS };
+enum operation { READBYTEPADS, READ_STATUS, CONFIGURE_DEFAULT, CONFIGURE, READ_CHANNELS };
 
 /* Macros for calculating struct offsets and field sizes.  offsetof(type,field)
  * could be included from stddef.h, but is instead replicated
@@ -186,13 +186,71 @@ int main()
 {
   byte buffer[BUF_SIZE];
 
+  int cardConfigured = 0;
+
+  struct scan_array s_array[SA_SIZE];
+  word autozero_data[SA_SIZE];
+  word calibrated_data[SA_SIZE];
+  word raw_data[SA_SIZE];
+  int cor_data[SA_SIZE];
+  cblk320 config_parameters;
+
+  /* Start the carrier and get going. */
+  if( InitCarrierLib() != S_OK ) {
+    fprintf(stderr, "Could not initialize carrier lib!\n");
+    return (-1);
+  }
+
   int data_size = 0;
   while( ( data_size = read_cmd(buffer) ) > 0 ) {
     if( buffer[0] == READBYTEPADS ) {
       if( cblk320_byte_pads(buffer, 21) != sizeof(cblk320) ) return (-1);
       write_cmd(buffer, 21);
     }
-    else break;
+
+    else if( buffer[0] == READ_STATUS ) {
+      if( cardConfigured != 1 ) {
+	buffer[0] = (-1);
+	write_cmd(buffer, 1);
+      }
+
+      else {
+	rsts320(&config_parameters);
+	buffer[0] = 1;
+	write_cmd(buffer, 1);
+      }
+    }
+
+    else if( buffer[0] == CONFIGURE_DEFAULT ) {
+      memcpy(&config_parameters, &(buffer[1]), sizeof(cblk320));
+
+      config_parameters.s_raw_buf  = &raw_data[0];
+      config_parameters.s_az_buf   = &autozero_data[0];
+      config_parameters.s_cal_buf  = &calibrated_data[0];
+      config_parameters.s_cor_buf  = &cor_data[0];
+      config_parameters.sa_start   = &s_array[0];
+      config_parameters.sa_end     = config_parameters.sa_start;
+
+      if( CarrierOpen(0, &config_parameters.nHandle) != S_OK ) {
+	fprintf(stderr, "Could not open carrier!\n");
+      }
+
+      cardConfigured = 1;
+      buffer[0] = 0;
+      write_cmd(buffer, 1);
+    }
+
+    else if( buffer[0] == READ_CHANNELS ) {
+      if( cardConfigured != 1) {
+	buffer[0] = (-1);
+	write_cmd(buffer, 1);
+      }
+      else {
+	ainmc320(&config_parameters);
+	memcpy(&buffer, &raw_data, SA_SIZE*sizeof(word));
+	write_cmd(buffer, SA_SIZE*sizeof(word));
+      }
+    }
   }
 
   return 0;
