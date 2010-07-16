@@ -186,14 +186,13 @@ int main()
 {
   byte buffer[BUF_SIZE];
 
-  int cardConfigured = 0;
-
   struct scan_array s_array[SA_SIZE];
   word autozero_data[SA_SIZE];
   word calibrated_data[SA_SIZE];
   word raw_data[SA_SIZE];
   int cor_data[SA_SIZE];
   cblk320 config_parameters;
+  long addr;
 
   /* Start the carrier and get going. */
   if( InitCarrierLib() != S_OK ) {
@@ -209,7 +208,7 @@ int main()
     }
 
     else if( buffer[0] == READ_STATUS ) {
-      if( cardConfigured != 1 ) {
+      if( config_parameters.bInitialized != 1 ) {
 	buffer[0] = (-1);
 	write_cmd(buffer, 1);
       }
@@ -235,14 +234,32 @@ int main()
 	fprintf(stderr, "Could not open carrier!\n");
       }
 
-      cardConfigured = 1;
+      if( GetCarrierAddress(config_parameters.nHandle, &addr) != S_OK ) {
+	fprintf(stderr, "Could not get carrier address!\n");
+      }
+
+      if( CarrierInitialize(config_parameters.nHandle) != S_OK ) {
+	fprintf(stderr, "Carrier initialization failed.\n");
+      }
+      else {
+	config_parameters.bCarrier = TRUE;
+      }
+
+      if( GetIOSAddress(config_parameters.nHandle, config_parameters.slotLetter, &addr) != S_OK ) {
+	fprintf(stderr, "Could not initialize board!");
+      }
+      else {
+	config_parameters.brd_ptr = (struct map320 *)addr;
+	config_parameters.bInitialized = TRUE;
+      }
+      
       buffer[0] = 0;
       write_cmd(buffer, 1);
     }
 
     else if( buffer[0] == READ_CHANNELS ) {
-      if( cardConfigured != 1) {
-	buffer[0] = (-1);
+      if( config_parameters.bInitialized == FALSE ) {
+	buffer[0] = 128;
 	write_cmd(buffer, 1);
       }
       else {

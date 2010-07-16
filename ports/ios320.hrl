@@ -64,6 +64,6 @@
 	  nHandle = <<0:?INT/native-integer>>,
 	  bCarrier = <<0:?INT/native-integer>>,
 	  bInitialized = <<0:?INT/native-integer>>,
-	  control_reg = <<0:?INT/native-integer>>,
+	  control_reg = <<0:?WORD/native-integer>>,
 	  board_id_prom = <<0:264/native-integer>>
 	}).

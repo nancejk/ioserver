@@ -1,7 +1,7 @@
 CSRC=cport sport ios320
 CSRC_TGTS=$(add-suffix .o,$(CSRC))
 ACROMAG_INC=/home/slowcontroller/ios
-ACROMAG_OBJ=$(addsuffix .o, ioscarrier rsts320 ainmc320)
+ACROMAG_OBJ=$(addsuffix .o, ioscarrier rsts320 ainmc320 ainsc320)
 ACROMAG_TGT=$(addprefix $(ACROMAG_INC)/ios320/, $(ACROMAG_OBJ))
 
 CFLAGS=-Wall -pedantic -std=c99 -I$(ACROMAG_INC)
