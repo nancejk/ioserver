@@ -3,12 +3,14 @@
  * Written by Jared Nance - started on 6/30/2010.
  */
 
-typedef unsigned char byte;
-
 /* Standard C headers */
 #include <stdio.h>
 #include <unistd.h>
 #include <ei.h>
+
+/* Acromag includes */
+#include <ioscarrier.h>
+#include <ios320.h>
 
 /* The maximum buffer size in bytes. */
 #define BUF_SIZE 512
@@ -33,6 +35,9 @@ int read_exact(byte* buffer, int len);
 int write_cmd(ei_x_buff* x);
 int write_exact(byte* buffer, int len);
 
+/* Typedef for cblock320 struct */
+typedef struct cblk320 cblk320;
+
 int main()
 {
   byte buffer[BUF_SIZE];
@@ -54,7 +59,6 @@ int main()
 
   int data_size = 0;
   while( ( data_size = read_cmd(buffer) ) > 0 ) {
-    
     /* Read the bytepads associated with the compiled cblk320 on this system*/
     /* TODO TODO this does absolutely nothing. */
     if( buffer[0] == READBYTEPADS ) {
