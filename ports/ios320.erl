@@ -2,32 +2,53 @@
 % 12 bit ADC.
 
 -module(ios320).
--export([start/0,start/2,stop/0,bytepads/0]).
--define(CALL_BYTEPADS, 0).
+-behavior(gen_server).
+-export([start_link/0, start_link/1, handle_call/3, init/1, terminate/2]).
 
-start() ->
-    start(run, "./ios320").
+% This is a temporary record.  Should be replaced with something reasonable.
+-record(ios320config, {yes=no}).
 
-start(Mode, Executable) when Mode == run ->
+start_link() ->
+    gen_server:start_link({local, cardA}, ?MODULE, [cardA], []).
+
+start_link(CardSlot) when is_atom(CardSlot) ->
+    case CardSlot of
+	slotA ->
+	    gen_server:start_link({local, slotA}, ?MODULE, [slotA], []);
+	slotB ->
+	    gen_server:start_link({local, slotB}, ?MODULE, [slotB], []);
+	slotC ->
+	    gen_server:start_link({local, slotC}, ?MODULE, [slotC], []);
+	slotD ->
+	    gen_server:start_link({local, slotD}, ?MODULE, [slotD], []);
+	true ->
+	    error
+    end.
+
+init([CardSlot]) when is_atom(CardSlot) ->
+    PortName = list_to_atom( atom_to_list(CardSlot) ++ atom_to_list(port) ),
     spawn( fun() ->
-		   register( ?MODULE, self() ),
-		   process_flag(trap_exit, true),
-		   Port = open_port({spawn, Executable}, [{packet,2}, binary, exit_status]),
+		   Port = open_port({spawn, "./ios320"}, [{packet, 2}, binary, exit_status]),
+		   register( PortName, self() ),
 		   loop(Port)
-	   end);
-start(Mode,Executable) ->
-    {Mode, Executable}.
+	   end),
+    {ok, {PortName, #ios320config{}}}.
 
-stop() ->
+terminate(shutdown, State) ->
     ?MODULE ! stop.
 
-bytepads() ->
-    call_port({cmd, self(), <<0:8/integer>>}).
+handle_call({bytepads, _}, Caller, {PortName, Configuration}=State) ->
+    case call_port({cmd, Caller, PortName, <<0:8/integer>>}) of
+    {ok, Data} ->
+	    {reply, Data, State};
+	true ->
+	    {error, unknown}
+    end.
 
-call_port(Msg) -> 
-    ?MODULE ! Msg,
+call_port({cmd, Caller, PortName, Msg}) -> 
+    PortName ! {cmd, self(), Msg},
     receive
-	{?MODULE, Result} ->
+	Result ->
 	    Result
     end.
 
@@ -37,7 +58,7 @@ loop(Port) ->
 	    Port ! {self(), {command, Payload}},
 	    receive
 		{Port, {data,Data}} ->
-		    Caller ! {?MODULE, binary_to_term(Data)}
+		    Caller ! binary_to_term(Data)
 	    end,
 	    loop(Port);
 	stop ->
