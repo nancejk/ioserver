@@ -34,18 +34,18 @@ init([CardSlot]) when is_atom(CardSlot) ->
 	   end),
     {ok, {PortName, #ios320config{}}}.
 
-terminate(shutdown, State) ->
-    ?MODULE ! stop.
+terminate(shutdown, {PortName, Configuration}=State) ->
+    PortName ! stop.
 
 handle_call({bytepads, _}, Caller, {PortName, Configuration}=State) ->
-    case call_port({cmd, Caller, PortName, <<0:8/integer>>}) of
+    case call_port({cmd, PortName, <<0:8/integer>>}) of
     {ok, Data} ->
 	    {reply, Data, State};
 	true ->
 	    {error, unknown}
     end.
 
-call_port({cmd, Caller, PortName, Msg}) -> 
+call_port({cmd, PortName, Msg}) -> 
     PortName ! {cmd, self(), Msg},
     receive
 	Result ->
