@@ -7,13 +7,14 @@ CFLAGS=-Wall -pedantic -std=c99
 LDFLAGS=-L. -L$(ELIB) -lerl_interface -lpthread -lei
 
 ACROMAG_BASE=/home/slowcontroller/ios/
-ACROMAG_TGTS=
 ACROMAG_INC=$(addprefix -I$(ACROMAG_BASE),ios320 ioscarrier)
+ACROMAG_OBJ=$(addsuffix .o, ioscarrier rsts320 ainmc320 ainsc320)
+ACROMAG_TGT=$(addprefix $(ACROMAG_BASE)ios320/, $(ACROMAG_OBJ))
 
 all: ios320 erl_comm.o
 
 ios320: $(CSRC_TGTS)
-	gcc -o $@ $(CSRC_TGTS) $(LDFLAGS)
+	gcc -o $@ $(CSRC_TGTS) $(LDFLAGS) $(ACROMAG_TGT)y
 
 %.o: %.c
 	gcc -g $(CFLAGS) -o $@ -c $< -I$(EINC) $(ACROMAG_INC)
