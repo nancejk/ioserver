@@ -14,7 +14,7 @@ ACROMAG_TGT=$(addprefix $(ACROMAG_BASE)ios320/, $(ACROMAG_OBJ))
 all: ios320 erl_comm.o
 
 ios320: $(CSRC_TGTS)
-	gcc -o $@ $(CSRC_TGTS) $(LDFLAGS) $(ACROMAG_TGT)y
+	gcc -o $@ $(CSRC_TGTS) $(LDFLAGS) $(ACROMAG_TGT)
 
 %.o: %.c
 	gcc -g $(CFLAGS) -o $@ -c $< -I$(EINC) $(ACROMAG_INC)
