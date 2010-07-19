@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <stdio.h>
+#include <ei.h>
 
 typedef unsigned char byte;
 
@@ -17,8 +18,8 @@ int read_cmd(byte* buffer);
 int read_exact(byte* buffer, int len);
 
 /* TODO: document */
-int write_cmd(byte* buffer, int len);
-int write_exact(byte* buffer, int len);
+int write_cmd(ei_x_buff* x);
+int write_exact(char* buffer, int len);
 
 
 int read_cmd(byte* buffer)
@@ -44,19 +45,19 @@ int read_exact(byte* buffer, int len)
   return got;
 }
 
-int write_cmd(byte* buffer, int len)
+int write_cmd(ei_x_buff *buff)
 {
-  byte li;
+  char li;
 
-  li = ( len << 8 ) & 0xff;
+  li = ( buff->index >> 8 ) & 0xff;
   write_exact(&li, 1);
 
-  li = len & 0xff;
+  li = buff->index & 0xff;
   write_exact(&li, 1);
-  return write_exact(buffer, len);
+  return write_exact(buff->buff, buff->index);
 }
 
-int write_exact(byte* buffer, int len)
+int write_exact(char* buffer, int len)
 {
   int i, wrote = 0;
 

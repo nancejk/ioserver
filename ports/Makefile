@@ -1,22 +1,22 @@
-CSRC=cport sport ios320
-CSRC_TGTS=$(add-suffix .o,$(CSRC))
-ACROMAG_INC=/home/slowcontroller/ios
-ACROMAG_OBJ=$(addsuffix .o, ioscarrier rsts320 ainmc320 ainsc320)
-ACROMAG_TGT=$(addprefix $(ACROMAG_INC)/ios320/, $(ACROMAG_OBJ))
+CSRC=erl_comm ios320
+E=/usr/lib/erlang/lib/erl_interface-3.6.5
+EINC=$(E)/include
+ELIB=$(E)/lib
+CSRC_TGTS=$(addsuffix .o,$(CSRC))
+CFLAGS=-Wall -pedantic -std=c99
+LDFLAGS=-L. -L$(ELIB) -lerl_interface -lpthread -lei
 
-CFLAGS=-Wall -pedantic -std=c99 -I$(ACROMAG_INC)
+all: ios320 erl_comm.o
 
-all: ios320.beam ios320 iosutils.beam
-
-ios320: ios320.o erl_comm.o
-	gcc $(LDFLAGS) erl_comm.o $(ACROMAG_TGT) $< -o $@
+ios320: $(CSRC_TGTS)
+	gcc -o $@ $(CSRC_TGTS) $(LDFLAGS)
 
 %.o: %.c
-	gcc -g $(CFLAGS) -o $@ -c $<
+	gcc -g $(CFLAGS) -o $@ -c $< -I$(EINC)
 
 %.beam: %.erl
 	erlc $<
 
 clean:
-	rm port.beam sport sport.o erl_comm.o cport cport.o
+	rm erl_comm.o
 

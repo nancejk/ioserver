@@ -3,43 +3,50 @@
 
 -module(ios320).
 -include("ios320.hrl").
--export([start/0,start/2,stop/0,bytepads/0, read_status/0, configure_default/0, read_channels/0]).
+-behavior(gen_server).
+-export([start_link/0, start_link/1, handle_call/3, init/1, terminate/2]).
 
-start() ->
-    start(run, "./ios320").
+start_link() ->
+    gen_server:start_link({local, cardA}, ?MODULE, [cardA], []).
 
-start(Mode, Executable) when Mode == run ->
+start_link(CardSlot) when is_atom(CardSlot) ->
+    case CardSlot of
+	slotA ->
+	    gen_server:start_link({local, slotA}, ?MODULE, [slotA], []);
+	slotB ->
+	    gen_server:start_link({local, slotB}, ?MODULE, [slotB], []);
+	slotC ->
+	    gen_server:start_link({local, slotC}, ?MODULE, [slotC], []);
+	slotD ->
+	    gen_server:start_link({local, slotD}, ?MODULE, [slotD], []);
+	true ->
+	    error
+    end.
+
+init([CardSlot]) when is_atom(CardSlot) ->
+    PortName = list_to_atom( atom_to_list(CardSlot) ++ atom_to_list(port) ),
     spawn( fun() ->
-		   register( ?MODULE, self() ),
-		   process_flag(trap_exit, true),
-		   Port = open_port({spawn, Executable}, [{packet,2}]),
+		   Port = open_port({spawn, "./ios320"}, [{packet, 2}, binary, exit_status]),
+		   register( PortName, self() ),
 		   loop(Port)
-	   end);
-start(Mode,Executable) ->
-    {Mode, Executable}.
+	   end),
+    {ok, {PortName, #ios320config{}}}.
 
-stop() ->
-    ?MODULE ! stop.
+terminate(shutdown, {PortName, _Configuration}=_State) ->
+    PortName ! stop.
 
-bytepads() ->
-    call_port({cmd, self(), <<0:8/integer>>}).
+handle_call({bytepads, _Arbitrary}, _Caller, {PortName, _Configuration}=State) ->
+    case call_port({cmd, PortName, <<0:8/integer>>}) of
+	{ok, Data} ->
+	    {reply, Data, State};
+	true ->
+	    {error, unknown}
+    end.
 
-read_status() ->
-    call_port({cmd, self(), <<1:8/integer>>}).
-
-read_channels() ->
-    call_port({cmd, self(), <<4:8/integer>>}).
-
-configure_default() ->
-    [_|T] = tuple_to_list(#ios320config{}),
-    BP = lists:map(fun iosutils:zero_blob/1, bytepads()),
-    {ok, Final} = iosutils:interleave(T, BP),
-    call_port({cmd, self(), list_to_binary([<<2:8/integer>> | Final])}).
-
-call_port(Msg) -> 
-    ?MODULE ! Msg,
+call_port({cmd, PortName, Msg}) -> 
+    PortName ! {cmd, self(), Msg},
     receive
-	{?MODULE, Result} ->
+	Result ->
 	    Result
     end.
 
@@ -49,7 +56,7 @@ loop(Port) ->
 	    Port ! {self(), {command, Payload}},
 	    receive
 		{Port, {data,Data}} ->
-		    Caller ! {?MODULE, Data}
+		    Caller ! binary_to_term(Data)
 	    end,
 	    loop(Port);
 	stop ->
