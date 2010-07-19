@@ -2,8 +2,7 @@
 % 12 bit ADC.
 
 -module(ios320).
--export([start/0,start/2,stop/0,bytepads/0])
-
+-export([start/0,start/2,stop/0,bytepads/0]).
 -define(CALL_BYTEPADS, 0).
 
 start() ->
@@ -13,7 +12,7 @@ start(Mode, Executable) when Mode == run ->
     spawn( fun() ->
 		   register( ?MODULE, self() ),
 		   process_flag(trap_exit, true),
-		   Port = open_port({spawn, Executable}, [{packet,2}]),
+		   Port = open_port({spawn, Executable}, [{packet,2}, binary, exit_status]),
 		   loop(Port)
 	   end);
 start(Mode,Executable) ->
@@ -38,7 +37,7 @@ loop(Port) ->
 	    Port ! {self(), {command, Payload}},
 	    receive
 		{Port, {data,Data}} ->
-		    Caller ! {?MODULE, Data}
+		    Caller ! {?MODULE, binary_to_term(Data)}
 	    end,
 	    loop(Port);
 	stop ->
