@@ -71,10 +71,11 @@ int main()
     }
 
     /* (Re)configure the cblk320 */
-    /* TODO TODO this does absolutely nothing. */
     else if( buffer[0] == CONFIGURE ) {
       if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
-      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "configure") ) return (-1);
+
+      memcpy(&config_parameters, &(buffer[1]), sizeof(cblk320));
+      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "configured") ) return (-1);
     }
 
     /* Run the autozero routine for the cblk320 */

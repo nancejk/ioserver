@@ -36,7 +36,6 @@ terminate(shutdown, {PortName, _CardSlot, _Configuration}=_State) ->
     PortName ! stop.
 
 handle_call({bytepads, _Arbitrary}, _Caller, {PortName, _CardSlot, _Configuration}=State) ->
-    io:format("bytepads called~n"),
     case call_port({cmd, PortName, <<0:8/integer>>}) of
 	{ok, Data} ->
 	    {reply, Data, State};
@@ -45,17 +44,13 @@ handle_call({bytepads, _Arbitrary}, _Caller, {PortName, _CardSlot, _Configuratio
     end;
 
 handle_call({configure, initial}, _Caller, {PortName, CardSlot, noconfig}=_State) ->
-    io:format("entered initial configuration~n"),
     [ _ | Body ] = tuple_to_list(#ios320config{}),
     % Can we somehow get the gen_server to take care of this?
     case call_port({cmd, PortName, <<0:8/integer>>}) of
 	{ok, Bytepads} ->
-	    io:format("building bytepads (len ~p)~n",[length(Bytepads)]),
 	    {ok, FinalBlob} = iosutils:interleave(Body, Bytepads),
-	    io:format("calling port~n"),
 	    case call_port({cmd, PortName, list_to_binary([<<1:8/integer>> | FinalBlob])}) of
 		{ok, _} ->
-		    io:format("got reply~n"),
 		    {reply, ok, FinalBlob};
 		true ->
 		    {reply, error, noconfig}
