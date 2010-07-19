@@ -60,10 +60,14 @@ int main()
   int data_size = 0;
   while( ( data_size = read_cmd(buffer) ) > 0 ) {
     /* Read the bytepads associated with the compiled cblk320 on this system*/
-    /* TODO TODO this does absolutely nothing. */
     if( buffer[0] == READBYTEPADS ) {
       if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
-      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "bytepads") ) return (-1);
+      if( ei_x_encode_atom(&result, "ok") ) return (-1);
+
+      cblk320_byte_pads(&buffer, 21);
+      if( ei_x_encode_list_header(&result, 21) ) return (-1);
+      for(int i = 0; i < 21; i++) ei_x_encode_char(&result, buffer[i]);
+      ei_x_encode_empty_list(&result);
     }
 
     /* (Re)configure the cblk320 */

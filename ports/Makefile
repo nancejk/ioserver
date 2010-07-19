@@ -1,4 +1,4 @@
-CSRC=erl_comm ios320
+CSRC=erl_comm ios320 ios320utils
 E=/usr/lib/erlang/lib/erl_interface-3.6.5
 EINC=$(E)/include
 ELIB=$(E)/lib
