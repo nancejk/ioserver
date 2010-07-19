@@ -14,7 +14,9 @@ typedef unsigned char byte;
 #define BUF_SIZE 512
 
 /* Enumeration over possible functions that can be called. */
-enum operation { READBYTEPADS };
+enum operation { READBYTEPADS, CONFIGURE, 
+		 AUTOZERO, AUTOCAL, READ_CHANNELS_RAW,
+		 READ_CHANNELS_CAL, READ_CHANNELS_COR};
 
 /* Macros for calculating struct offsets and field sizes.  offsetof(type,field)
  * could be included from stddef.h, but is instead replicated
@@ -38,10 +40,51 @@ int main()
 
   int data_size = 0;
   while( ( data_size = read_cmd(buffer) ) > 0 ) {
+    
+    /* Read the bytepads associated with the compiled cblk320 on this system*/
+    /* TODO TODO this does absolutely nothing. */
     if( buffer[0] == READBYTEPADS ) {
       if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
-      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "bytepads") ) return (-2);
+      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "bytepads") ) return (-1);
     }
+
+    /* (Re)configure the cblk320 */
+    /* TODO TODO this does absolutely nothing. */
+    else if( buffer[0] == CONFIGURE ) {
+      if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
+      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "configure") ) return (-1);
+    }
+
+    /* Run the autozero routine for the cblk320 */
+    else if( buffer[0] == AUTOZERO ) {
+      if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
+      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "autozero") ) return (-1);
+    }
+
+    /* Run the autocalibrate routine for the cblk320 */
+    else if( buffer[0] == AUTOCAL ) {
+      if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
+      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "autocalibrate") ) return (-1);
+    }
+
+    /* Read the raw ADC counts from the card */
+    else if( buffer[0] == READ_CHANNELS_RAW ) {
+      if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
+      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "read_raw") ) return (-1);
+    }
+
+    /* Read calibrated ADC counts from the card */
+    else if( buffer[0] == READ_CHANNELS_CAL ) {
+      if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
+      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "read_cal") ) return (-1);
+    }
+
+    /* Read corrected data from the card */
+    else if( buffer[0] == READ_CHANNELS_COR ) {
+      if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
+      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "read_cor") ) return (-1);
+    }
+
     write_cmd(&result);
     ei_x_free(&result);
   }
