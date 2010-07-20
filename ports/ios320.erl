@@ -95,6 +95,18 @@ handle_call({calibrate, _Arbitrary}, _Caller, {PortName, _CardSlot, _Config}=Sta
 	    {reply, {error, unknown_error}, State}
     end;
 
+handle_call({read_raw, _Arbitrary}, _Caller, {_PortName, _CardSlot, noconfig}=State) ->
+    {reply, {error, card_not_configured}, State};
+handle_call({read_raw, _Arbitrary}, _Caller, {PortName, _CardSlot, _Config}=State) ->
+    case call_port({cmd, PortName, <<4:8/integer>>}) of
+	{ok, Msg} ->
+	    {reply, {ok, Msg}, State};
+	{error, Reason} ->
+	    {reply, {error, Reason}, State};
+	true ->
+	    {reply, {error, unknown_error}, State}
+    end;
+
 handle_call({_Unknown, _UnknownArg}, _Caller, {_PortName, _CardSlot, _Config}=State) ->
     {reply, {error, unimplemented}, State}.
 

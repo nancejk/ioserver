@@ -189,6 +189,26 @@ int main()
     /* Read the raw ADC counts from the card */
     else if( buffer[0] == READ_CHANNELS_RAW ) {
       if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
+      if( config_parameters.bInitialized = TRUE ) {
+	ainmc320(&config_parameters);
+	if( config_parameters.mode == DIF ) {
+	  if( ei_x_encode_atom(&result, "ok") || ei_x_encode_list_header(&result, SA_SIZE) ) return (-1);
+	  for(int i = 0; i < SA_SIZE; i++) ei_x_encode_long(&result, raw_data_20ch[i]);
+	  ei_x_encode_empty_list(&result);
+	}
+	else if( config_parameters.mode == SEI ) {
+	  if( ei_x_encode_atom(&result, "ok") || ei_x_encode_list_header(&result, 2*SA_SIZE) ) return (-1);
+	  for(int i = 0; i < 2*SA_SIZE; i++) ei_x_encode_long(&result, raw_data_40ch[i]);
+	  ei_x_encode_empty_list(&result);
+	}
+	else {
+	  if( ei_x_encode_atom(&result, "error") || ei_x_encode_atom(&result, "unknown_mode") ) return (-1);
+	}
+      }
+      else {
+	if( ei_x_encode_atom(&result, "error") || ei_x_encode_atom(&result, "card_uninitialized") ) return (-1) ;
+      }
+
       if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "read_raw") ) return (-1);
     }
 
