@@ -37,7 +37,7 @@ terminate(shutdown, {PortName, _CardSlot, _Configuration}=_State) ->
 
 % Beginning of handle_call section.
 handle_call({bytepads, _Arbitrary}, _Caller, {PortName, _CardSlot, _Configuration}=State) ->
-    case call_port({cmd, PortName, <<0:8/integer>>}) of
+    case call_port({cmd, PortName, ?CALL_BYTEPADS}) of
 	{ok, Data} ->
 	    {reply, Data, State};
 	true ->
@@ -47,10 +47,10 @@ handle_call({bytepads, _Arbitrary}, _Caller, {PortName, _CardSlot, _Configuratio
 handle_call({configure, initial}, _Caller, {PortName, CardSlot, noconfig}=_State) ->
     [ _ | Body ] = tuple_to_list(#ios320config{}),
     % Can we somehow get the gen_server to take care of this?
-    case call_port({cmd, PortName, <<0:8/integer>>}) of
+    case call_port({cmd, PortName, ?CALL_BYTEPADS}) of
 	{ok, Bytepads} ->
 	    {ok, FinalBlob} = iosutils:interleave(Body, lists:map(fun iosutils:zero_blob/1,Bytepads)),
-	    case call_port({cmd, PortName, list_to_binary([<<1:8/integer>> | FinalBlob])}) of
+	    case call_port({cmd, PortName, list_to_binary([?CONFIGURE | FinalBlob])}) of
 		{ok, Msg} ->
 		    {reply, {ok, Msg}, {PortName, CardSlot, FinalBlob}};
 		{error, Reason} ->
@@ -63,7 +63,7 @@ handle_call({configure, initial}, _Caller, {PortName, CardSlot, noconfig}=_State
 handle_call({autozero, _Arbitrary}, _Caller, {_PortName, _CardSlot, noconfig}=State) ->
     {reply, {error, card_not_configured}, State};
 handle_call({autozero, _Arbitrary}, _Caller, {PortName, _CardSlot, _Config}=State) ->
-    case call_port({cmd, PortName, <<2:8/integer>>}) of
+    case call_port({cmd, PortName, ?AUTOZERO}) of
 	{ok, Msg} ->
 	    {reply, {ok, Msg}, State};
 	{error, Reason} ->
@@ -75,7 +75,7 @@ handle_call({autozero, _Arbitrary}, _Caller, {PortName, _CardSlot, _Config}=Stat
 handle_call({initialize, _Arbitrary}, _Caller, {PortName, _CardSlot, noconfig}=State) ->
     {reply, {error, card_not_configured}, State};
 handle_call({initialize, _Arbitrary}, _Caller, {PortName, _CardSlot, Config}=State) ->
-    case call_port({cmd, PortName, <<99:8/integer>>}) of
+    case call_port({cmd, PortName, ?INITIALIZE}) of
 	{ok, Msg} ->
 	    {reply, {ok, Msg}, State};
 	{error, Reason} ->
@@ -86,7 +86,7 @@ handle_call({initialize, _Arbitrary}, _Caller, {PortName, _CardSlot, Config}=Sta
 handle_call({calibrate, _Arbitrary}, _Caller, {_PortName, _CardSlot, noconfig}=State) ->
     {reply, {error, card_not_configured}, State};
 handle_call({calibrate, _Arbitrary}, _Caller, {PortName, _CardSlot, _Config}=State) ->
-    case call_port({cmd, PortName, <<3:8/integer>>}) of
+    case call_port({cmd, PortName, ?CALIBRATE}) of
 	{ok, Msg} ->
 	    {reply, {ok, Msg}, State};
 	{error, Reason} ->
@@ -98,7 +98,7 @@ handle_call({calibrate, _Arbitrary}, _Caller, {PortName, _CardSlot, _Config}=Sta
 handle_call({read_raw, _Arbitrary}, _Caller, {_PortName, _CardSlot, noconfig}=State) ->
     {reply, {error, card_not_configured}, State};
 handle_call({read_raw, _Arbitrary}, _Caller, {PortName, _CardSlot, _Config}=State) ->
-    case call_port({cmd, PortName, <<4:8/integer>>}) of
+    case call_port({cmd, PortName, ?READCOR}) of
 	{ok, Msg} ->
 	    {reply, {ok, Msg}, State};
 	{error, Reason} ->

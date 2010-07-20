@@ -4,9 +4,16 @@
 -define(INT, 32).
 -define(LONG, 32).
 
-% C API functions that can be called
+% C API functions that can be called in their
+% binary equivalent
 -define(CALL_BYTEPADS, <<0:?BYTE/native-integer>>).
 -define(CONFIGURE, <<1:?BYTE/native-integer>>).
+-define(AUTOZERO, <<2:?BYTE/native-integer>>).
+-define(INITIALIZE, <<99:?BYTE/native-integer>>).
+-define(CALIBRATE, <<3:?BYTE/native-integer>>).
+-define(READRAW, <<4:?BYTE/native-integer>>).
+-define(READCOR, <<5:?BYTE/native-integer>>).
+
 
 % IOS320 operating modes
 -define(DIFFERENTIAL, <<1:?BYTE/native-integer>>).
