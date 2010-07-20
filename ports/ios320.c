@@ -18,7 +18,8 @@
 /* Enumeration over possible functions that can be called. */
 enum operation { READBYTEPADS, CONFIGURE, 
 		 AUTOZERO, AUTOCAL, READ_CHANNELS_RAW,
-		 READ_CHANNELS_CAL, READ_CHANNELS_COR};
+		 READ_CHANNELS_CAL, READ_CHANNELS_COR,
+		 INITIALIZE=99};
 
 /* Macros for calculating struct offsets and field sizes.  offsetof(type,field)
  * could be included from stddef.h, but is instead replicated
@@ -35,6 +36,8 @@ int read_exact(byte* buffer, int len);
 int write_cmd(ei_x_buff* x);
 int write_exact(byte* buffer, int len);
 
+int cblk320_byte_pads(byte* buffer, int size);
+
 /* Typedef for cblock320 struct */
 typedef struct cblk320 cblk320;
 
@@ -43,11 +46,21 @@ int main()
   byte buffer[BUF_SIZE];
   ei_x_buff result;
 
-  struct scan_array s_array[SA_SIZE];
-  word autozero_data[SA_SIZE];
-  word calibrated_data[SA_SIZE];
-  word raw_data[SA_SIZE];
-  int cor_data[SA_SIZE];
+  struct scan_array s_array_20ch[SA_SIZE];
+  struct scan_array s_array_40ch[2*SA_SIZE];
+
+  word autozero_data_20ch[SA_SIZE];
+  word autozero_data_40ch[2*SA_SIZE];
+
+  word calibrated_data_20ch[SA_SIZE];
+  word calibrated_data_40ch[2*SA_SIZE];
+
+  word raw_data_20ch[SA_SIZE];
+  word raw_data_40ch[2*SA_SIZE];
+
+  int cor_data_20ch[SA_SIZE];
+  int cor_data_40ch[SA_SIZE];
+
   cblk320 config_parameters;
   long addr;
 
@@ -72,22 +85,105 @@ int main()
 
     /* (Re)configure the cblk320 */
     else if( buffer[0] == CONFIGURE ) {
+      int legitimate_config = 1;
       if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
 
       memcpy(&config_parameters, &(buffer[1]), sizeof(cblk320));
+
+      /* Use the mode parameter to appropriately set the scan arrays.  In Differential mode there
+      *  are 20 channels to be read. */
+      if( config_parameters.mode == DIF ) {
+	config_parameters.s_raw_buf = raw_data_20ch;
+	config_parameters.s_az_buf = autozero_data_20ch;
+	config_parameters.s_cal_buf = calibrated_data_20ch;
+	config_parameters.s_cor_buf = cor_data_20ch;
+	config_parameters.sa_start  = s_array_20ch;
+	config_parameters.sa_end    = &(s_array_20ch[SA_SIZE-1]);
+      }
+      /* Single ended mode has 40 channels */
+      else if( config_parameters.mode == SEI ) {
+	config_parameters.s_raw_buf = raw_data_40ch;
+	config_parameters.s_az_buf = autozero_data_40ch;
+	config_parameters.s_cal_buf = calibrated_data_40ch;
+	config_parameters.s_cor_buf = cor_data_40ch;
+	config_parameters.sa_start  = s_array_40ch;
+	config_parameters.sa_end    = &(s_array_40ch[2*SA_SIZE-1]);
+      }
+      else {
+	fprintf(stderr, "unknown mode %d\n", config_parameters.mode);
+	if( ei_x_encode_atom(&result, "error") || ei_x_encode_atom(&result, "unknown_mode") ) return (-1);
+	legitimate_config = 0;
+      }
+
       if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "configured") ) return (-1);
+    }
+
+    /* Initialize the card/carrier combination */
+    else if( buffer[0] == INITIALIZE ) {
+      int initialize_success = 1;
+      if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
+
+      if( CarrierOpen(0, &config_parameters.nHandle) != S_OK ) {
+	if( ei_x_encode_atom(&result, "error") || ei_x_encode_atom(&result, "open_carrier_failed") ) return (-1);
+	initialize_success = 0;
+      }
+
+      if( initialize_success && GetCarrierAddress(config_parameters.nHandle, &addr) != S_OK ) {
+	if( ei_x_encode_atom(&result, "error") || ei_x_encode_atom(&result, "get_carrier_address_failed") ) return (-1);
+	initialize_success = 0;
+      }
+
+      if( initialize_success && CarrierInitialize(config_parameters.nHandle) != S_OK ) {
+	if( ei_x_encode_atom(&result, "error") || ei_x_encode_atom(&result, "carrier_init_failed") ) return (-1);
+	initialize_success = 0;
+      }
+      else {
+	config_parameters.bCarrier = TRUE;
+      }
+
+      if( initialize_success && GetIOSAddress(config_parameters.nHandle, config_parameters.slotLetter, &addr) != S_OK ) {
+	if( ei_x_encode_atom(&result, "error") || ei_x_encode_atom(&result, "get_ios_addr_failed") ) return (-1);
+	initialize_success = 0;
+      }
+      else {
+	config_parameters.brd_ptr = (struct map320*) addr;
+	config_parameters.bInitialized = TRUE;
+      }
+
+      if( initialize_success ) {
+	if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "initialized") ) return (-1);
+      }
     }
 
     /* Run the autozero routine for the cblk320 */
     else if( buffer[0] == AUTOZERO ) {
+      int autozero_success = 1;
       if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
-      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "autozero") ) return (-1);
+      if( config_parameters.bInitialized = TRUE ) {
+	byte temp_mode = config_parameters.mode;
+	config_parameters.mode = AZV;
+	ainmc320(&config_parameters);
+	config_parameters.mode = temp_mode;
+	if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "finished") ) return (-1);
+      }
+      else {
+	if( ei_x_encode_atom(&result, "error") || ei_x_encode_atom(&result, "card_uninitialized") ) return (-1) ;
+      }
     }
 
     /* Run the autocalibrate routine for the cblk320 */
     else if( buffer[0] == AUTOCAL ) {
       if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
-      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "autocalibrate") ) return (-1);
+      if( config_parameters.bInitialized = TRUE ) {
+	byte temp_mode = config_parameters.mode;
+	config_parameters.mode = CAL;
+	ainmc320(&config_parameters);
+	config_parameters.mode = temp_mode;
+	if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "autocalibrate") ) return (-1);
+      }
+      else {
+	if( ei_x_encode_atom(&result, "error") || ei_x_encode_atom(&result, "card_uninitialized") ) return (-1) ;
+      }
     }
 
     /* Read the raw ADC counts from the card */

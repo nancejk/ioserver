@@ -35,6 +35,7 @@ init([CardSlot]) when is_atom(CardSlot) ->
 terminate(shutdown, {PortName, _CardSlot, _Configuration}=_State) ->
     PortName ! stop.
 
+% Beginning of handle_call section.
 handle_call({bytepads, _Arbitrary}, _Caller, {PortName, _CardSlot, _Configuration}=State) ->
     case call_port({cmd, PortName, <<0:8/integer>>}) of
 	{ok, Data} ->
@@ -48,16 +49,54 @@ handle_call({configure, initial}, _Caller, {PortName, CardSlot, noconfig}=_State
     % Can we somehow get the gen_server to take care of this?
     case call_port({cmd, PortName, <<0:8/integer>>}) of
 	{ok, Bytepads} ->
-	    {ok, FinalBlob} = iosutils:interleave(Body, Bytepads),
+	    {ok, FinalBlob} = iosutils:interleave(Body, lists:map(fun iosutils:zero_blob/1,Bytepads)),
 	    case call_port({cmd, PortName, list_to_binary([<<1:8/integer>> | FinalBlob])}) of
-		{ok, _} ->
-		    {reply, ok, FinalBlob};
-		true ->
-		    {reply, error, noconfig}
+		{ok, Msg} ->
+		    {reply, {ok, Msg}, {PortName, CardSlot, FinalBlob}};
+		{error, Reason} ->
+		    {reply, {error, Reason}, {PortName, CardSlot, noconfig}}
 	    end;
 	 true ->
-	    {reply, error, noconfig}
-    end.
+	    {reply, {error, bytepads_failed}, noconfig}
+    end;
+
+handle_call({autozero, _Arbitrary}, _Caller, {_PortName, _CardSlot, noconfig}=State) ->
+    {reply, {error, card_not_configured}, State};
+handle_call({autozero, _Arbitrary}, _Caller, {PortName, _CardSlot, _Config}=State) ->
+    case call_port({cmd, PortName, <<2:8/integer>>}) of
+	{ok, Msg} ->
+	    {reply, {ok, Msg}, State};
+	{error, Reason} ->
+	    {reply, {error, Reason}, State};
+	true ->
+	    {reply, {error, unknown_error}, State}
+    end;
+
+handle_call({initialize, _Arbitrary}, _Caller, {PortName, _CardSlot, noconfig}=State) ->
+    {reply, {error, card_not_configured}, State};
+handle_call({initialize, _Arbitrary}, _Caller, {PortName, _CardSlot, Config}=State) ->
+    case call_port({cmd, PortName, <<99:8/integer>>}) of
+	{ok, Msg} ->
+	    {reply, {ok, Msg}, State};
+	{error, Reason} ->
+	    {reply, {error, Reason}, State};
+	true ->
+	    {reply, {error, unknown_error}, State}
+    end;
+handle_call({calibrate, _Arbitrary}, _Caller, {_PortName, _CardSlot, noconfig}=State) ->
+    {reply, {error, card_not_configured}, State};
+handle_call({calibrate, _Arbitrary}, _Caller, {PortName, _CardSlot, _Config}=State) ->
+    case call_port({cmd, PortName, <<3:8/integer>>}) of
+	{ok, Msg} ->
+	    {reply, {ok, Msg}, State};
+	{error, Reason} ->
+	    {reply, {error, Reason}, State};
+	true ->
+	    {reply, {error, unknown_error}, State}
+    end;
+
+handle_call({_Unknown, _UnknownArg}, _Caller, {_PortName, _CardSlot, _Config}=State) ->
+    {reply, {error, unimplemented}, State}.
 
 call_port({cmd, PortName, Msg}) -> 
     PortName ! {cmd, self(), Msg},
