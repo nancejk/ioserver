@@ -8,7 +8,7 @@ LDFLAGS=-L. -L$(ELIB) -lerl_interface -lpthread -lei
 
 ACROMAG_BASE=/home/slowcontroller/ios/
 ACROMAG_INC=$(addprefix -I$(ACROMAG_BASE),ios320 ioscarrier)
-ACROMAG_OBJ=$(addsuffix .o, ioscarrier rsts320 ainmc320 ainsc320)
+ACROMAG_OBJ=$(addsuffix .o, ioscarrier rsts320 ainmc320 ainsc320 mccd320)
 ACROMAG_TGT=$(addprefix $(ACROMAG_BASE)ios320/, $(ACROMAG_OBJ))
 
 all: ios320 erl_comm.o

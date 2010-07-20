@@ -13,13 +13,12 @@
 #include <ios320.h>
 
 /* The maximum buffer size in bytes. */
-#define BUF_SIZE 512
+#define BUF_SIZE 1024
 
 /* Enumeration over possible functions that can be called. */
 enum operation { READBYTEPADS, CONFIGURE, 
 		 AUTOZERO, AUTOCAL, READ_CHANNELS_RAW,
-		 READ_CHANNELS_CAL, READ_CHANNELS_COR,
-		 INITIALIZE=99};
+		 READ_CHANNELS_COR, INITIALIZE=99};
 
 /* Macros for calculating struct offsets and field sizes.  offsetof(type,field)
  * could be included from stddef.h, but is instead replicated
@@ -99,6 +98,10 @@ int main()
 	config_parameters.s_cor_buf = cor_data_20ch;
 	config_parameters.sa_start  = s_array_20ch;
 	config_parameters.sa_end    = &(s_array_20ch[SA_SIZE-1]);
+	for( int i = 0; i < SA_SIZE; i ++ ) {
+	  s_array_20ch[i].chn = i;
+	  s_array_20ch[i].gain = config_parameters.gain;
+	}
       }
       /* Single ended mode has 40 channels */
       else if( config_parameters.mode == SEI ) {
@@ -108,6 +111,10 @@ int main()
 	config_parameters.s_cor_buf = cor_data_40ch;
 	config_parameters.sa_start  = s_array_40ch;
 	config_parameters.sa_end    = &(s_array_40ch[2*SA_SIZE-1]);
+	for( int i = 0; i < 2*SA_SIZE; i++ ) {
+	  s_array_40ch[i].chn = i;
+	  s_array_40ch[i].gain = config_parameters.gain;
+	}
       }
       else {
 	fprintf(stderr, "unknown mode %d\n", config_parameters.mode);
@@ -159,7 +166,7 @@ int main()
     else if( buffer[0] == AUTOZERO ) {
       int autozero_success = 1;
       if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
-      if( config_parameters.bInitialized = TRUE ) {
+      if( config_parameters.bInitialized == TRUE ) {
 	byte temp_mode = config_parameters.mode;
 	config_parameters.mode = AZV;
 	ainmc320(&config_parameters);
@@ -174,7 +181,7 @@ int main()
     /* Run the autocalibrate routine for the cblk320 */
     else if( buffer[0] == AUTOCAL ) {
       if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
-      if( config_parameters.bInitialized = TRUE ) {
+      if( config_parameters.bInitialized == TRUE ) {
 	byte temp_mode = config_parameters.mode;
 	config_parameters.mode = CAL;
 	ainmc320(&config_parameters);
@@ -189,7 +196,7 @@ int main()
     /* Read the raw ADC counts from the card */
     else if( buffer[0] == READ_CHANNELS_RAW ) {
       if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
-      if( config_parameters.bInitialized = TRUE ) {
+      if( config_parameters.bInitialized == TRUE ) {
 	ainmc320(&config_parameters);
 	if( config_parameters.mode == DIF ) {
 	  if( ei_x_encode_atom(&result, "ok") || ei_x_encode_list_header(&result, SA_SIZE) ) return (-1);
@@ -213,15 +220,57 @@ int main()
     }
 
     /* Read calibrated ADC counts from the card */
-    else if( buffer[0] == READ_CHANNELS_CAL ) {
-      if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
-      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "read_cal") ) return (-1);
-    }
-
-    /* Read corrected data from the card */
     else if( buffer[0] == READ_CHANNELS_COR ) {
+      float z,s,u;
       if( ei_x_new_with_version(&result) || ei_x_encode_tuple_header(&result, 2)) return (-1);
-      if( ei_x_encode_atom(&result, "ok") || ei_x_encode_atom(&result, "read_cor") ) return (-1);
+      if( config_parameters.bInitialized == TRUE ) {
+	ainmc320(&config_parameters);
+	mccd320(&config_parameters);
+
+	switch(config_parameters.range)
+	  {
+	  case RANGE_5TO5:
+	    z = -5.0000;
+	    s = 10.0000;
+	    break;
+	  case RANGE_0TO10:
+	    z = 0.0000;
+	    s = 10.0000;
+	    break;
+	  default: /* 10 to 10 */
+	    z = -10.0000;
+	    s = 20.0000;
+	    break;
+	  }
+
+	if( config_parameters.mode == DIF ) {
+	  if( ei_x_encode_atom(&result, "ok") || ei_x_encode_list_header(&result, SA_SIZE) ) return (-1);
+	  for(int i = 0; i < SA_SIZE; i++) {
+	    if( cor_data_20ch[i] > config_parameters.bit_constant ) u = (float)cor_data_20ch[i] - (float)CON16;
+	    else u = (float) cor_data_20ch[i];
+	    u = (u/(float)config_parameters.bit_constant * s + z)/(float)(s_array_20ch[i].gain);
+	    ei_x_encode_double(&result, u);
+	  }
+	  ei_x_encode_empty_list(&result);
+	}
+	else if( config_parameters.mode == SEI ) {
+	  if( ei_x_encode_atom(&result, "ok") || ei_x_encode_list_header(&result, 2*SA_SIZE) ) return (-1);
+	  for(int i = 0; i < 2*SA_SIZE; i++) {
+	    if( cor_data_40ch[i] > config_parameters.bit_constant ) u = (float)cor_data_40ch[i] - (float)CON16;
+	    else u = (float) cor_data_40ch[i];
+	    u = (u/(float)config_parameters.bit_constant * s + z)/(float)s_array_40ch[i].gain;
+	    ei_x_encode_double(&result, u);
+	  }
+	  ei_x_encode_empty_list(&result);
+	}
+	else {
+	  if( ei_x_encode_atom(&result, "error") || ei_x_encode_atom(&result, "unknown_mode") ) return (-1) ;
+	}
+	  
+      }
+      else {
+	if( ei_x_encode_atom(&result, "error") || ei_x_encode_atom(&result, "card_uninitialized") ) return (-1) ;
+      }
     }
 
     write_cmd(&result);
